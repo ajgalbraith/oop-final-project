@@ -208,23 +208,22 @@ class BudgetPlannerGUI:
         expenses_listbox = tk.Listbox(self.master, width=50)
         expenses_listbox.pack(pady=20)
 
-        def update_expenses_listbox():
-            expenses_listbox.delete(0, tk.END)  # Clear the listbox
+        def update_expenses_listbox():  # refreshes
+            expenses_listbox.delete(0, tk.END)
             for category in self.planner.categories:
                 for expense in category.expenses:
                     expenses_listbox.insert(tk.END, f"{category.name}: ${expense.amount} on {expense.date}")
 
         def add_expense():
             self.planner.add_expense(expense_category_combobox.get(), float(expense_amount_entry.get()))
-            update_expenses_listbox()  # Refresh the listbox
-            # Optionally, clear the entries after adding an expense
+            update_expenses_listbox()
             expense_category_combobox.set('')
             expense_amount_entry.delete(0, tk.END)
 
         add_expense_button = tk.Button(self.master, text="Add", command=add_expense)
         add_expense_button.pack(pady=5)
 
-        update_expenses_listbox()  # Populate the listbox initially
+        update_expenses_listbox()
 
         back_btn = tk.Button(self.master, text="Back", command=self.create_main_menu)
         back_btn.pack(pady=20)
@@ -232,7 +231,7 @@ class BudgetPlannerGUI:
     def data_visualization(self):
         self.clear_window()
 
-        # Menu Frame
+        # mini menu
         menu_frame = tk.Frame(self.master)
         menu_frame.pack(pady=20)
 
@@ -242,10 +241,10 @@ class BudgetPlannerGUI:
         back_btn = tk.Button(menu_frame, text="Back", command=self.create_main_menu)
         back_btn.pack(side=tk.LEFT, padx=10)
 
-        # Canvas to display the plots
         self.canvas_frame = tk.Frame(self.master)
         self.canvas_frame.pack(fill=tk.BOTH, expand=True)
 
+        # helper text..
         t = tk.Text(self.master, height=2, width=30, font=("", 20))
         t.insert(tk.END, "Please add categories with budgets before using the pie chart.")
         t.pack()
@@ -255,16 +254,13 @@ class BudgetPlannerGUI:
         for widget in self.canvas_frame.winfo_children():
             widget.destroy()
 
-        # Extracting category names and their respective budget limits
         categories = [cat.name for cat in self.planner.categories]
         budget_limits = [cat.budget_limit for cat in self.planner.categories]
 
-        # Creating the pie chart
         fig, ax = plt.subplots(figsize=(5, 4))
         ax.pie(budget_limits, labels=categories, autopct='%1.1f%%', startangle=90)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+        ax.axis('equal')
 
-        # Embedding the figure to the tkinter window
         canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
