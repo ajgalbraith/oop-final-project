@@ -1,8 +1,20 @@
-import tkinter as tk
-from tkinter import ttk
-import matplotlib.pyplot as plt
-from datetime import date
 import pickle
+import tkinter as tk
+from datetime import date
+from tkinter import ttk
+
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+
+def popup_window(my_string):
+    window = tk.Toplevel()
+
+    label = tk.Label(window, text=my_string)
+    label.pack(fill='x', padx=50, pady=5)
+
+    button_close = tk.Button(window, text="Close", command=window.destroy)
+    button_close.pack(fill='x')
 
 
 class Category:
@@ -59,6 +71,7 @@ class BudgetPlanner:
     def add_expense(self, category_name, amount):
         category = self.find_category_by_name(category_name)
         if not category:
+            print("Category not found")
             return None  # Category not found
         return category.add_expense(amount)
 
@@ -99,6 +112,7 @@ def on_entry_click(event, default_text):
 class BudgetPlannerGUI:
 
     def __init__(self, master):
+        self.canvas_frame = None
         self.quit_btn = None
         self.view_data_btn = None
         self.savings_btn = None
@@ -137,35 +151,50 @@ class BudgetPlannerGUI:
     def manage_categories(self):
         self.clear_window()
 
+        # categories
         categories_label = tk.Label(self.master, text="Categories")
         categories_label.pack(pady=10)
 
-        # For simplicity, we're displaying existing categories in a listbox
-        categories_listbox = tk.Listbox(self.master, width=50)
+        categories_listbox = tk.Listbox(self.master, width=50, height=10, bg='#FFF', fg='#000')
         categories_listbox.pack(pady=10)
 
-        for category in self.planner.categories:
-            categories_listbox.insert(tk.END, f"{category.name}: ${category.budget_limit}")
+        def update_categories_listbox():
+            if self.planner.categories:
+                categories_listbox.delete(0, tk.END)
+                for category in self.planner.categories:
+                    categories_listbox.insert(tk.END, f"{category.name}: ${category.budget_limit}")
 
+        update_categories_listbox()
+
+        # form to add category
         name_entry = tk.Entry(self.master, bg='#FFF', fg='#000')
-        name_entry.pack(pady=5)
         name_entry.insert(0, "Category Name")
+        name_entry.pack(pady=5)
         name_entry.bind("<FocusIn>", lambda e: on_entry_click(e, "Category Name"))
         name_entry.bind("<FocusOut>", lambda e: on_focusout(e, "Category Name"))
 
         budget_limit = tk.Entry(self.master, bg='#FFF', fg='#000')
-        budget_limit.pack(pady=5)
         budget_limit.insert(0, "Budget Limit")
+        budget_limit.pack(pady=5)
         budget_limit.bind("<FocusIn>", lambda e: on_entry_click(e, "Budget Limit"))
         budget_limit.bind("<FocusOut>", lambda e: on_focusout(e, "Budget Limit"))
 
-        add_category_button = tk.Button(self.master, text="Add Category",
-                                        command=lambda: self.planner.add_category(name_entry.get(), budget_limit.get())
-                                        )
+        def add_category():
+            self.planner.add_category(name_entry.get(), float(budget_limit.get()))
+            update_categories_listbox()
+            # reset form
+            name_entry.delete(0, tk.END)
+            name_entry.insert(0, "Category Name")
+            budget_limit.delete(0, tk.END)
+            budget_limit.insert(0, "Budget Limit")
+
+        add_category_button = tk.Button(self.master, text="Add Category", command=add_category)
         add_category_button.pack(pady=5)
 
         back_btn = tk.Button(self.master, text="Back", command=self.create_main_menu)
         back_btn.pack(pady=20)
+
+        self.master.update()
 
     def manage_expenses(self):
         self.clear_window()
@@ -176,19 +205,26 @@ class BudgetPlannerGUI:
         expense_amount_entry = tk.Entry(self.master, bg='#FFF', fg='#000')
         expense_amount_entry.pack(pady=5)
 
-        add_expense_button = tk.Button(self.master, text="Add",
-                                       command=lambda: self.planner.add_expense(expense_amount_entry.get(),
-                                                                                expense_category_combobox.get())
-                                       )
-
-        add_expense_button.pack(pady=5)
-
         expenses_listbox = tk.Listbox(self.master, width=50)
         expenses_listbox.pack(pady=20)
 
-        for category in self.planner.categories:
-            for expense in category.expenses:
-                expenses_listbox.insert(tk.END, f"{category.name}: ${expense.amount} on {expense.date}")
+        def update_expenses_listbox():
+            expenses_listbox.delete(0, tk.END)  # Clear the listbox
+            for category in self.planner.categories:
+                for expense in category.expenses:
+                    expenses_listbox.insert(tk.END, f"{category.name}: ${expense.amount} on {expense.date}")
+
+        def add_expense():
+            self.planner.add_expense(expense_category_combobox.get(), float(expense_amount_entry.get()))
+            update_expenses_listbox()  # Refresh the listbox
+            # Optionally, clear the entries after adding an expense
+            expense_category_combobox.set('')
+            expense_amount_entry.delete(0, tk.END)
+
+        add_expense_button = tk.Button(self.master, text="Add", command=add_expense)
+        add_expense_button.pack(pady=5)
+
+        update_expenses_listbox()  # Populate the listbox initially
 
         back_btn = tk.Button(self.master, text="Back", command=self.create_main_menu)
         back_btn.pack(pady=20)
@@ -196,35 +232,54 @@ class BudgetPlannerGUI:
     def data_visualization(self):
         self.clear_window()
 
+        # Menu Frame
+        menu_frame = tk.Frame(self.master)
+        menu_frame.pack(pady=20)
+
+        pie_chart_button = tk.Button(menu_frame, text="Display Pie Chart", command=self.display_pie_chart)
+        pie_chart_button.pack(side=tk.LEFT, padx=10)
+
+        back_btn = tk.Button(menu_frame, text="Back", command=self.create_main_menu)
+        back_btn.pack(side=tk.LEFT, padx=10)
+
+        # Canvas to display the plots
+        self.canvas_frame = tk.Frame(self.master)
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True)
+
+        t = tk.Text(self.master, height=2, width=30, font=("", 20))
+        t.insert(tk.END, "Please add categories with budgets before using the pie chart.")
+        t.pack()
+
+    def display_pie_chart(self):
+        # Clear the canvas frame
+        for widget in self.canvas_frame.winfo_children():
+            widget.destroy()
+
+        # Extracting category names and their respective budget limits
         categories = [cat.name for cat in self.planner.categories]
-        expenses = [cat.total_expense() for cat in self.planner.categories]
+        budget_limits = [cat.budget_limit for cat in self.planner.categories]
 
-        fig, ax = plt.subplots()
-        ax.bar(categories, expenses, color=['blue', 'green', 'red', 'purple', 'orange'])
-        ax.set_xlabel('Categories')
-        ax.set_ylabel('Expenses in $')
-        ax.set_title('Expenses per Category')
-        canvas = tk.Canvas(self.master)
-        canvas.pack(fill=tk.BOTH, expand=True)
-        fig.tight_layout()
-        plt.show()
+        # Creating the pie chart
+        fig, ax = plt.subplots(figsize=(5, 4))
+        ax.pie(budget_limits, labels=categories, autopct='%1.1f%%', startangle=90)
+        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
-        self.back_btn = tk.Button(self.master, text="Back", command=self.create_main_menu)
-        self.back_btn.pack(pady=20)
+        # Embedding the figure to the tkinter window
+        canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
     def manage_savings(self):
-        # For simplicity, redirecting to the previous GUI to manage savings.
-        # Alternatively, you can create a new dedicated window.
-        savings_window = tk.Toplevel(self.master)
-        app = BudgetPlannerGUI(savings_window)
-
-
-def andGoBack(myFunction, myArguments, myBugdetPlanner: BudgetPlannerGUI):
-    myFunction(myArguments)
-    myBugdetPlanner.create_main_menu()
+        self.clear_window()
+        t = tk.Text(self.master, height=2, width=30, font=("", 20))
+        t.insert(tk.END, "I did not implement this yet. -James")
+        t.pack()
+        back_btn = tk.Button(self.master, text="Back", command=self.create_main_menu)
+        back_btn.pack(pady=20)
 
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.geometry("500x500")
     app = BudgetPlannerGUI(root)
     root.mainloop()
