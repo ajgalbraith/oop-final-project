@@ -267,9 +267,46 @@ class BudgetPlannerGUI:
 
     def manage_savings(self):
         self.clear_window()
-        t = tk.Text(self.master, height=2, width=30, font=("", 20))
-        t.insert(tk.END, "I did not implement this yet. -James")
-        t.pack()
+
+        savings_goals_label = tk.Label(self.master, text="Savings Goals")
+        savings_goals_label.pack(pady=10)
+
+        savings_goals_listbox = tk.Listbox(self.master, width=50, height=10, bg='#FFF', fg='#000')
+        savings_goals_listbox.pack(pady=10)
+
+        def update_savings_goals_listbox():
+            if self.planner.savings_goals:
+                savings_goals_listbox.delete(0, tk.END)
+                for savings_goal in self.planner.savings_goals:
+                    display_str = f"{savings_goal.name}: ${savings_goal.target_amount}"
+                    if savings_goal.is_goal_met():
+                        display_str += " (GOAL MET)"
+                    savings_goals_listbox.insert(tk.END, display_str)
+
+        update_savings_goals_listbox()
+
+        goal_name_entry = tk.Entry(self.master, bg='#FFF', fg='#000')
+        goal_name_entry.insert(0, "Saving Goal Name")
+        goal_name_entry.pack(pady=5)
+        goal_name_entry.bind("<FocusIn>", lambda e: on_entry_click(e, "Saving Goal Name"))
+        goal_name_entry.bind("<FocusOut>", lambda e: on_focusout(e, "Saving Goal Name"))
+
+        target_amount_entry = tk.Entry(self.master, bg='#FFF', fg='#000')
+        target_amount_entry.insert(0, "Target Amount")
+        target_amount_entry.pack(pady=5)
+        target_amount_entry.bind("<FocusIn>", lambda e: on_entry_click(e, "Target Amount"))
+        target_amount_entry.bind("<FocusOut>", lambda e: on_focusout(e, "Target Amount"))
+
+        def add_savings_goal():
+            self.planner.set_savings_goal(goal_name_entry.get(), float(target_amount_entry.get()))
+            goal_name_entry.delete(0, tk.END)
+            goal_name_entry.insert(0, "Savings Goal Name")
+            target_amount_entry.delete(0, tk.END)
+            target_amount_entry.insert(0, "Target Amount")
+            update_savings_goals_listbox()
+
+        add_savings_goal_btn = tk.Button(self.master, text="Add Saving Goal", command=add_savings_goal)
+        add_savings_goal_btn.pack(pady=5)
         back_btn = tk.Button(self.master, text="Back", command=self.create_main_menu)
         back_btn.pack(pady=20)
 
