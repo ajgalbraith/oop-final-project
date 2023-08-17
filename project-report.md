@@ -2,6 +2,8 @@
 
 By James Galbraith and Ahmed Khan
 
+Github Link: https://github.com/ajgalbraith/oop-final-project
+
 ## Project Description
 
 ### General Description, Goals, and Benefits
